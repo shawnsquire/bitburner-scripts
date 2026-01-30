@@ -1,3 +1,5 @@
+import { COLORS } from '/lib/utils.js';
+
 /** @param {NS} ns */
 export async function main(ns) {
   const FLAGS = ns.flags([
@@ -6,9 +8,7 @@ export async function main(ns) {
     ["limit", 0],
   ]);
 
-  const red = "\u001b[31m";
-  const green = "\u001b[32m";
-  const reset = "\u001b[0m";
+  const { red, green, reset } = COLORS;
 
   const ram = Number(FLAGS.ram) || 8;
   const prefix = String(FLAGS.prefix || "pserv");

@@ -1,3 +1,5 @@
+import { getAllServers } from '/lib/utils.js';
+
 /** @param {NS} ns */
 export async function main(ns) {
   const FLAGS = ns.flags([
@@ -16,7 +18,7 @@ export async function main(ns) {
   }
 
   // Build a set of ALL existing hostnames to avoid collisions with non-pserv servers too
-  const existing = new Set(discoverAllHostnames(ns, "home"));
+  const existing = new Set(getAllServers(ns));
 
   // Plan renames
   const plan = pservs.map((oldName) => {
@@ -66,17 +68,3 @@ function dedupeName(name, existingSet) {
   return `${name}-${Date.now()}`;
 }
 
-function discoverAllHostnames(ns, start) {
-  const seen = new Set([start]);
-  const q = [start];
-
-  while (q.length) {
-    const cur = q.shift();
-    for (const n of ns.scan(cur)) {
-      if (seen.has(n)) continue;
-      seen.add(n);
-      q.push(n);
-    }
-  }
-  return [...seen];
-}

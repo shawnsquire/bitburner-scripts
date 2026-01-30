@@ -1,3 +1,5 @@
+import { discoverAllWithDepthAndPath, pathTo } from '/lib/utils.js';
+
 /** @param {NS} ns */
 export async function main(ns) {
   const FLAGS = ns.flags([
@@ -17,7 +19,7 @@ export async function main(ns) {
 
   const { hosts, depthByHost, parentByHost } = discoverAllWithDepthAndPath(ns, start, maxDepth);
 
-  const rows = hosts.map((h) => toRow(ns, h, depthByHost.get(h) ?? -1, pathTo(parentByHost, h)));
+  const rows = hosts.map((h) => toRow(ns, h, depthByHost.get(h) ?? -1, pathToDisplay(parentByHost, h)));
   const comparators = buildComparators(sortSpec);
 
   const filtered = rows.filter(predicate);
@@ -54,69 +56,8 @@ export async function main(ns) {
 
 /* ------------------------------ discovery ------------------------------ */
 
-function discoverAllWithDepth(ns, start, maxDepth) {
-  const seen = new Set([start]);
-  const hosts = [];
-  const depthByHost = new Map([[start, 0]]);
-  const q = [start];
-
-  while (q.length) {
-    const cur = q.shift();
-    hosts.push(cur);
-
-    const curDepth = depthByHost.get(cur) ?? 0;
-    for (const n of ns.scan(cur)) {
-      if (seen.has(n)) continue;
-      seen.add(n);
-      depthByHost.set(n, curDepth + 1);
-
-      if(maxDepth < 0 || curDepth+1 < maxDepth)
-        q.push(n);
-    }
-  }
-
-  return { hosts, depthByHost };
-}
-
-function discoverAllWithDepthAndPath(ns, start, maxDepth) {
-  // Shortest known depth to each host
-  const depthByHost = new Map([[start, 0]]);
-  // Parent pointer to reconstruct path
-  const parentByHost = new Map([[start, null]]);
-  // Queue holds nodes whose neighbors need relaxing
-  const q = [start];
-
-  while (q.length) {
-    const cur = q.shift();
-    const curDepth = depthByHost.get(cur);
-
-    for (const n of ns.scan(cur)) {
-      const candDepth = curDepth + 1;
-      const prevDepth = depthByHost.get(n);
-
-      // If unseen OR we found a shorter path, update ("relax") it
-      if (prevDepth === undefined || candDepth < prevDepth) {
-        depthByHost.set(n, candDepth);
-        parentByHost.set(n, cur);
-
-        if (maxDepth < 0 || curDepth+1 < maxDepth)
-          q.push(n);
-      }
-    }
-  }
-
-  // Stable-ish ordering: depth then host
-  const hosts = [...depthByHost.keys()].sort((a, b) => {
-    const da = depthByHost.get(a);
-    const db = depthByHost.get(b);
-    return da - db || a.localeCompare(b);
-  });
-
-  return { hosts, depthByHost, parentByHost };
-}
-
-// Reconstruct path like: ["home","n00dles","foodnstuff"]
-function pathTo(parentByHost, target) {
+// Local pathTo that excludes both start and target for display purposes
+function pathToDisplay(parentByHost, target) {
   const path = [];
   let cur = target;
 

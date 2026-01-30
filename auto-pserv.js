@@ -1,15 +1,17 @@
-/** @param {NS} ns 
- * 
+/** @param {NS} ns
+ *
  * Auto Purchase & Upgrade Servers
- * 
+ *
  * Fills all server slots, then upgrades smallest servers first.
  * Processes multiple purchases/upgrades per cycle until funds run out.
- * 
+ *
  * Run: run auto-pserv.js              (continuous mode)
  *      run auto-pserv.js --single     (one pass, then exit)
  *      run auto-pserv.js --min-ram 64 (minimum RAM threshold)
  *      run auto-pserv.js --reserve 1b (keep $1b in reserve)
  */
+import { COLORS } from '/lib/utils.js';
+
 export async function main(ns) {
   const FLAGS = ns.flags([
     ["prefix", "pserv"],
@@ -19,14 +21,7 @@ export async function main(ns) {
     ["reserve", 0],       // Money to keep in reserve
   ]);
 
-  const C = {
-    red: "\u001b[31m",
-    green: "\u001b[32m",
-    yellow: "\u001b[33m",
-    cyan: "\u001b[36m",
-    dim: "\u001b[2m",
-    reset: "\u001b[0m",
-  };
+  const C = COLORS;
 
   const prefix = String(FLAGS.prefix);
   const minRam = Number(FLAGS["min-ram"]);

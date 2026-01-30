@@ -1,14 +1,16 @@
-/** @param {NS} ns 
- * 
+/** @param {NS} ns
+ *
  * Auto Share Manager
- * 
+ *
  * Continuously monitors for spare RAM across all servers and fills it
  * with share() threads to boost faction reputation gains.
- * 
+ *
  * Run: run auto-share.js
  *      run auto-share.js --min-free 16   (leave at least 16GB free per server)
  *      run auto-share.js --home-reserve 64
  */
+import { COLORS, getAllServers } from '/lib/utils.js';
+
 export async function main(ns) {
   // === FLAGS ===
   const FLAGS = ns.flags([
@@ -17,14 +19,7 @@ export async function main(ns) {
     ["interval", 10000],    // Ms between checks
   ]);
 
-  // === ANSI COLORS ===
-  const red = "\u001b[31m";
-  const green = "\u001b[32m";
-  const yellow = "\u001b[33m";
-  const cyan = "\u001b[36m";
-  const white = "\u001b[37m";
-  const dim = "\u001b[2m";
-  const reset = "\u001b[0m";
+  const { red, green, yellow, cyan, white, dim, reset } = COLORS;
 
   // === CONFIG ===
   const SHARE_SCRIPT = '/workers/share.js';
@@ -126,24 +121,6 @@ export async function main(ns) {
     ns.print(`\n${dim}Next check in ${interval / 1000}s...${reset}`);
     await ns.sleep(interval);
   }
-}
-
-/** Get all servers via recursive scan */
-function getAllServers(ns) {
-  const servers = new Set(['home']);
-  const queue = ['home'];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    for (const neighbor of ns.scan(current)) {
-      if (!servers.has(neighbor)) {
-        servers.add(neighbor);
-        queue.push(neighbor);
-      }
-    }
-  }
-
-  return [...servers];
 }
 
 /** Deploy share script to all servers */

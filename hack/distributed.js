@@ -1,12 +1,13 @@
-/** @param {NS} ns 
- * 
+/** @param {NS} ns
+ *
  * Distributed Multi-Target Hacker
- * 
+ *
  * Intelligently spreads your RAM across multiple targets simultaneously,
  * calculating optimal thread counts per target to maximize income.
- * 
+ *
  * Run: run distributed.js
  */
+import { COLORS, getAllServers, determineAction } from '/lib/utils.js';
 
 // === WORKER SCRIPTS ===
 export const SCRIPTS = {
@@ -24,15 +25,7 @@ export async function main(ns) {
   const MAX_TARGETS = 100;            // Max simultaneous targets
   const LOOP_DELAY = 200;            // ms between status updates while waiting
 
-  // === ANSI COLORS ===
-  const red = "\u001b[31m";
-  const green = "\u001b[32m";
-  const yellow = "\u001b[33m";
-  const blue = "\u001b[34m";
-  const magenta = "\u001b[35m";
-  const cyan = "\u001b[36m";
-  const white = "\u001b[37m";
-  const reset = "\u001b[0m";
+  const { red, green, yellow, blue, magenta, cyan, white, reset } = COLORS;
 
   ns.disableLog('ALL');
   ns.ui.openTail();
@@ -200,20 +193,6 @@ export async function main(ns) {
   }
 }
 
-/** Determine what action a server needs */
-function determineAction(server, moneyThreshold, difficultyBuffer) {
-  const securityThresh = server.minDifficulty + difficultyBuffer;
-  const moneyThresh = server.moneyMax * moneyThreshold;
-
-  if (server.hackDifficulty > securityThresh) {
-    return 'weaken';
-  } else if (server.moneyAvailable < moneyThresh) {
-    return 'grow';
-  } else {
-    return 'hack';
-  }
-}
-
 /** Calculate optimal threads for an action on a target */
 function calculateOptimalThreads(ns, hostname, action, hackPercent) {
   const server = ns.getServer(hostname);
@@ -285,24 +264,6 @@ function getUsableServers(ns, homeReserve) {
 
   // Sort by RAM descending (assign big servers first)
   return servers.sort((a, b) => b.availableRam - a.availableRam);
-}
-
-/** Get all servers via recursive scan */
-function getAllServers(ns) {
-  const servers = new Set(['home']);
-  const queue = ['home'];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    for (const neighbor of ns.scan(current)) {
-      if (!servers.has(neighbor)) {
-        servers.add(neighbor);
-        queue.push(neighbor);
-      }
-    }
-  }
-
-  return [...servers];
 }
 
 /** Deploy worker scripts to all servers */

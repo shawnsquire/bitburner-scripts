@@ -5,13 +5,6 @@ export async function main(ns) {
 
   const SLEEP_DELAY = 10000;
 
-  const BACKDOOR = [
-    "CSEC",
-    "avmnite-02h",
-    "I.I.I.I",
-    "run4theh111z",
-  ];
-
   while (true) {
     const player = ns.getPlayer();
     const hackTools = {
@@ -30,20 +23,10 @@ export async function main(ns) {
       .filter(s => !s.hasAdminRights)
       .filter(s => s.requiredHackingSkill <= player.skills.hacking)
       .filter(s => s.numOpenPortsRequired <= numHackTools);
-  
-    if (hackableServers.length > 0) {
-      ns.print(`${hackableServers.length} servers found available to hack!`)
-    
-  
-      for (const server of hackableServers) {
-        ns.print(`Hacking ${server.hostname}...`)
-        ns.run("hack/exploit.js", 1, server.hostname)
-        ns.print(`Done.`)
 
-        if (BACKDOOR.includes(server.hostname) && !server.backdoorInstalled) {
-          ns.print("BACKDOOR REQUESTED") // Note: Replace this eventually with actual backdoor install
-        }
-      }
+    for (const server of hackableServers) {
+      ns.print(`Hacking ${server.hostname}...`)
+      ns.run("hack/exploit.js", 1, server.hostname)
     }
 
     await ns.sleep(SLEEP_DELAY);

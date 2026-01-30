@@ -1,10 +1,12 @@
-/** @param {NS} ns 
- * 
+/** @param {NS} ns
+ *
  * Simple "Shotgun" Hacker - Deploy and Forget
- * 
+ *
  * Run: run shotgun.js [target]
  * Or:  run shotgun.js auto
  */
+import { COLORS, getAllServers, scoreTarget } from '/lib/utils.js';
+
 export async function main(ns) {
   const arg = ns.args[0] || 'auto';
   
@@ -114,8 +116,7 @@ function findBestTarget(ns) {
     if (server.moneyMax === 0) continue;
     if (hostname.startsWith('pserv-') || hostname === 'home') continue;
 
-    // Simple score: max money / hack time / min security
-    const score = server.moneyMax / ns.getHackTime(hostname) / server.minDifficulty;
+    const score = scoreTarget(ns, hostname);
     if (score > bestScore) {
       bestScore = score;
       best = hostname;
@@ -124,21 +125,4 @@ function findBestTarget(ns) {
   return best;
 }
 
-function getAllServers(ns) {
-  const servers = new Set(['home']);
-  const queue = ['home'];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    for (const neighbor of ns.scan(current)) {
-      if (!servers.has(neighbor)) {
-        servers.add(neighbor);
-        queue.push(neighbor);
-      }
-    }
-  }
-  return [...servers];
-}
-
-const red = "\u001b[31m";
-const green = "\u001b[32m";
-const reset = "\u001b[0m";
+const { red, green, reset } = COLORS;

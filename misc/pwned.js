@@ -1,12 +1,11 @@
+import { COLORS, getAllServers } from '/lib/utils.js';
 
-const red = "\u001b[31m";
-const green = "\u001b[32m";
-const reset = "\u001b[0m";
+const { red, green, reset } = COLORS;
 
 /** @param {NS} ns */
 export async function main(ns) {
   const command = ns.args[0];
-  const servers = getServers(ns);
+  const servers = getAllServers(ns).map(h => ns.getServer(h)).filter(s => s.hasAdminRights);
 
   ns.tprint(`${servers.length} servers...`)
 
@@ -77,9 +76,3 @@ function run(ns, servers, script, threads, args) {
   }
 }
 
-/** @param {NS} ns */
-function getServers(ns) {
-  const foundServers = new Set([`home`]);
-  for (const server of foundServers) ns.scan(server).forEach(adjacentServer => foundServers.add(adjacentServer));
-  return [...foundServers].sort().map(h => ns.getServer(h)).filter(s => s.hasAdminRights);
-}
