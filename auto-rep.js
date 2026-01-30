@@ -66,10 +66,7 @@ export async function main(ns) {
     }
 
     // === HEADER ===
-    ns.print(`${cyan}${'═'.repeat(60)}${reset}`);
-    ns.print(`${' '.repeat(20)}${white}AUTO REPUTATION MANAGER${reset}`);
-    ns.print(`${cyan}${'═'.repeat(60)}${reset}`);
-    ns.print(`${dim}Money: ${green}$${ns.formatNumber(player.money)}${reset} ${dim}| Pending Augs: ${yellow}${pendingAugs.length}${reset}`);
+    ns.print(`${white}AUTO REPUTATION MANAGER${reset}  ${dim}|${reset}  ${green}$${ns.formatNumber(player.money)}${reset}  ${dim}|${reset}  ${yellow}${pendingAugs.length}${reset} ${dim}pending augs${reset}`);
 
     if (!nextTarget) {
       ns.print(`\n${yellow}No faction with available augmentations found.${reset}`);
@@ -80,166 +77,154 @@ export async function main(ns) {
 
     const target = nextTarget.faction;
     const nextAug = nextTarget.aug;
+    const currentWork = ns.singularity.getCurrentWork();
 
     // Calculate rep gain rate
     const currentRep = target.currentRep;
     const now = Date.now();
     if (lastRep > 0 && lastTargetFaction === target.name) {
-      const timeDelta = (now - lastRepTime) / 1000; // seconds
+      const timeDelta = (now - lastRepTime) / 1000;
       if (timeDelta > 0) {
         const repDelta = currentRep - lastRep;
-        repGainRate = repGainRate * 0.7 + (repDelta / timeDelta) * 0.3; // smoothed
+        repGainRate = repGainRate * 0.7 + (repDelta / timeDelta) * 0.3;
       }
     }
     lastRep = currentRep;
     lastRepTime = now;
     lastTargetFaction = target.name;
 
-    // === FACTION STATUS ===
-    ns.print(`\n${white}Target Faction: ${cyan}${target.name}${reset}`);
-    ns.print(`${dim}Favor: ${target.favor.toFixed(0)} | Favor to donate: ${ns.getFavorToDonate().toFixed(0)}${reset}`);
-
-    if (nextAug) {
-      const repProgress = Math.min(1, currentRep / nextAug.repReq);
-      const repBar = makeBar(repProgress, 30, repProgress >= 1 ? green : cyan);
-      const repNeeded = Math.max(0, nextAug.repReq - currentRep);
-
-      ns.print(`\n${white}Next Augmentation: ${yellow}${nextAug.name}${reset}`);
-      ns.print(`${dim}Rep Required: ${ns.formatNumber(nextAug.repReq)} | Cost: $${ns.formatNumber(nextAug.basePrice)}${reset}`);
-      ns.print(`${white}Progress: ${repBar} ${(repProgress * 100).toFixed(1)}%${reset}`);
-      ns.print(`${dim}Current: ${ns.formatNumber(currentRep)} / ${ns.formatNumber(nextAug.repReq)} (need ${ns.formatNumber(repNeeded)} more)${reset}`);
-
-      // ETA calculation
-      if (repNeeded > 0 && repGainRate > 0) {
-        const etaSeconds = repNeeded / repGainRate;
-        const etaStr = formatTime(etaSeconds);
-        ns.print(`${white}ETA: ${cyan}${etaStr}${reset} ${dim}(${ns.formatNumber(repGainRate)}/s)${reset}`);
-      } else if (repNeeded <= 0) {
-        ns.print(`${green}✓ Reputation requirement met!${reset}`);
-      } else {
-        ns.print(`${dim}ETA: calculating...${reset}`);
-      }
-
-      // Money status
-      const canAfford = player.money - FLAGS.reserve >= nextAug.basePrice;
-      const moneyStatus = canAfford
-        ? `${green}✓ Can afford${reset}`
-        : `${red}✗ Need $${ns.formatNumber(nextAug.basePrice - player.money + FLAGS.reserve)} more${reset}`;
-      ns.print(`${white}Money: ${moneyStatus}`);
-
-      // Ready to purchase?
-      if (repNeeded <= 0 && canAfford) {
-        ns.print(`\n${green}▶ READY TO PURCHASE: ${nextAug.name}${reset}`);
-        ns.print(`${dim}Use: ns.singularity.purchaseAugmentation("${target.name}", "${nextAug.name}")${reset}`);
-      }
-    } else {
-      ns.print(`\n${green}All available augmentations from this faction are owned!${reset}`);
-    }
-
-    // === WORK STATUS ===
-    const currentWork = ns.singularity.getCurrentWork();
-    ns.print(`\n${dim}${'─'.repeat(60)}${reset}`);
-
-    if (currentWork && currentWork.type === 'FACTION') {
-      ns.print(`${white}Working: ${green}${currentWork.factionWorkType}${reset} for ${cyan}${currentWork.factionName}${reset}`);
-    } else if (currentWork) {
-      ns.print(`${white}Current Work: ${yellow}${currentWork.type}${reset}`);
-    } else {
-      ns.print(`${dim}Not currently working${reset}`);
-    }
-
-    // Auto-work logic
+    // Auto-work logic (do this early so status reflects current state)
     if (!FLAGS["no-work"] && nextAug && nextAug.repReq > currentRep) {
       const bestWork = selectBestWorkType(ns, player);
       const currentlyWorking = currentWork?.type === 'FACTION' && currentWork?.factionName === target.name;
-
       if (!currentlyWorking || currentWork.factionWorkType !== bestWork) {
-        const success = ns.singularity.workForFaction(target.name, bestWork, false);
-        if (success) {
-          ns.print(`${cyan}→ Started ${bestWork} work for ${target.name}${reset}`);
-        }
+        ns.singularity.workForFaction(target.name, bestWork, false);
       }
     }
 
-    // === AUGMENTATION PURCHASE PRIORITY ===
-    ns.print(`\n${cyan}${'═'.repeat(60)}${reset}`);
-    ns.print(`${white}RECOMMENDED PURCHASE ORDER${reset}`);
-    ns.print(`${dim}(Most expensive first - minimizes total cost with 1.9x multiplier)${reset}`);
-    ns.print(`${cyan}${'═'.repeat(60)}${reset}`);
+    // === CURRENT FOCUS ===
+    ns.print('');
+    ns.print(`${cyan}CURRENT FOCUS${reset}`);
 
+    // Faction + work status on one line
+    let workStatus = `${dim}not working${reset}`;
+    if (currentWork?.type === 'FACTION' && currentWork?.factionName === target.name) {
+      workStatus = `${green}${currentWork.factionWorkType}${reset}`;
+    } else if (currentWork?.type === 'FACTION') {
+      workStatus = `${yellow}working for ${currentWork.factionName}${reset}`;
+    } else if (currentWork) {
+      workStatus = `${yellow}${currentWork.type.toLowerCase()}${reset}`;
+    }
+    ns.print(`${white}${target.name}${reset}  ${dim}→${reset}  ${workStatus}  ${dim}(favor: ${target.favor.toFixed(0)}/${ns.getFavorToDonate().toFixed(0)})${reset}`);
+
+    // === NEXT UNLOCK ===
+    if (nextAug) {
+      const repProgress = Math.min(1, currentRep / nextAug.repReq);
+      const repBar = makeBar(repProgress, 40, repProgress >= 1 ? green : cyan);
+      const repNeeded = Math.max(0, nextAug.repReq - currentRep);
+      const canAfford = player.money - FLAGS.reserve >= nextAug.basePrice;
+
+      ns.print('');
+      ns.print(`${cyan}NEXT UNLOCK${reset}  ${yellow}${nextAug.name}${reset}`);
+      ns.print(`${repBar} ${white}${(repProgress * 100).toFixed(1)}%${reset}`);
+
+      // Rep progress line
+      let repLine = `${dim}${ns.formatNumber(currentRep)} / ${ns.formatNumber(nextAug.repReq)} rep${reset}`;
+      if (repNeeded > 0) {
+        repLine += `  ${dim}(need ${ns.formatNumber(repNeeded)} more)${reset}`;
+      }
+      ns.print(repLine);
+
+      // ETA and cost on one line
+      let etaStr = '';
+      if (repNeeded > 0 && repGainRate > 0) {
+        etaStr = `${white}ETA:${reset} ${cyan}${formatTime(repNeeded / repGainRate)}${reset} ${dim}@ ${ns.formatNumber(repGainRate)}/s${reset}`;
+      } else if (repNeeded <= 0) {
+        etaStr = `${green}✓ rep unlocked${reset}`;
+      } else {
+        etaStr = `${dim}ETA: calculating...${reset}`;
+      }
+      const costStr = canAfford
+        ? `${green}✓ $${ns.formatNumber(nextAug.basePrice)}${reset}`
+        : `${red}✗ $${ns.formatNumber(nextAug.basePrice)}${reset} ${dim}(need $${ns.formatNumber(nextAug.basePrice - player.money + FLAGS.reserve)} more)${reset}`;
+      ns.print(`${etaStr}  ${dim}|${reset}  ${costStr}`);
+
+      // Ready to purchase banner
+      if (repNeeded <= 0 && canAfford) {
+        ns.print('');
+        ns.print(`${green}▶ READY TO PURCHASE${reset}  ${dim}run${reset} ${white}rep-purchase.js --confirm${reset}`);
+      }
+    } else {
+      ns.print('');
+      ns.print(`${green}✓ All augmentations from ${target.name} unlocked!${reset}`);
+    }
+
+    // === PURCHASE ORDER ===
     const purchasePlan = calculatePurchasePriority(ns, factionData);
 
-    if (purchasePlan.length === 0) {
-      ns.print(`${dim}No augmentations unlocked for purchase yet.${reset}`);
-    } else {
-      // Header (simplified - all items have rep)
-      ns.print(`${dim}${'#'.padStart(2)} ${'Augmentation'.padEnd(32)} ${'Adj Cost'.padStart(12)} ${'Running Total'.padStart(14)}${reset}`);
-      ns.print(`${dim}${'─'.repeat(65)}${reset}`);
+    ns.print('');
+    ns.print(`${cyan}${'═'.repeat(65)}${reset}`);
 
+    if (purchasePlan.length === 0) {
+      ns.print(`${cyan}PURCHASE ORDER${reset}  ${dim}no augmentations unlocked yet${reset}`);
+    } else {
+      const totalCost = purchasePlan.reduce((sum, a) => sum + a.adjustedCost, 0);
+      const availableMoney = player.money - FLAGS.reserve;
       let runningTotal = 0;
-      const maxShow = 15;
+      const affordableCount = purchasePlan.filter(a => {
+        runningTotal += a.adjustedCost;
+        return runningTotal <= availableMoney;
+      }).length;
+
+      ns.print(`${cyan}PURCHASE ORDER${reset}  ${dim}${purchasePlan.length} unlocked, ${green}${affordableCount} affordable${reset}${dim}, $${ns.formatNumber(totalCost)} total${reset}`);
+      ns.print('');
+
+      ns.print(`${dim}${'#'.padStart(2)}  ${'Augmentation'.padEnd(34)} ${'Cost'.padStart(11)}    ${'Total'.padStart(11)}${reset}`);
+
+      runningTotal = 0;
+      const maxShow = 12;
 
       for (let i = 0; i < Math.min(purchasePlan.length, maxShow); i++) {
         const item = purchasePlan[i];
         runningTotal += item.adjustedCost;
-
-        const canAffordThis = player.money - FLAGS.reserve >= runningTotal;
-        const numColor = canAffordThis ? green : dim;
+        const canAffordThis = availableMoney >= runningTotal;
+        const color = canAffordThis ? green : dim;
         const nameColor = canAffordThis ? white : dim;
-        const costColor = canAffordThis ? green : dim;
 
         ns.print(
-          `${numColor}${(i + 1).toString().padStart(2)}${reset} ` +
-          `${nameColor}${item.name.substring(0, 32).padEnd(32)}${reset} ` +
-          `${costColor}$${ns.formatNumber(item.adjustedCost).padStart(11)}${reset} ` +
-          `${costColor}$${ns.formatNumber(runningTotal).padStart(13)}${reset}`
+          `${color}${(i + 1).toString().padStart(2)}${reset}  ` +
+          `${nameColor}${item.name.substring(0, 34).padEnd(34)}${reset} ` +
+          `${color}$${ns.formatNumber(item.adjustedCost).padStart(10)}${reset}    ` +
+          `${color}$${ns.formatNumber(runningTotal).padStart(10)}${reset}`
         );
       }
 
       if (purchasePlan.length > maxShow) {
-        ns.print(`${dim}... +${purchasePlan.length - maxShow} more augmentations${reset}`);
+        ns.print(`${dim}    ... +${purchasePlan.length - maxShow} more${reset}`);
       }
 
-      // Summary
-      const totalCost = purchasePlan.reduce((sum, a) => sum + a.adjustedCost, 0);
-      const affordableCount = purchasePlan.filter((a, i) => {
-        const running = purchasePlan.slice(0, i + 1).reduce((s, x) => s + x.adjustedCost, 0);
-        return player.money - FLAGS.reserve >= running;
-      }).length;
-
-      ns.print(`${dim}${'─'.repeat(65)}${reset}`);
-      ns.print(`${white}Total: ${reset}${ns.formatNumber(purchasePlan.length)} augs | $${ns.formatNumber(totalCost)} | ${green}${affordableCount} affordable${reset}`);
-
-      // Warning if total exceeds available money
-      const availableMoney = player.money - FLAGS.reserve;
       if (totalCost > availableMoney) {
-        ns.print(`${yellow}⚠ Need $${ns.formatNumber(totalCost - availableMoney)} more to buy all${reset}`);
+        ns.print('');
+        ns.print(`${yellow}Need $${ns.formatNumber(totalCost - availableMoney)} more to buy all${reset}`);
       }
     }
 
-    // === SWITCH HINTS (Other Factions) ===
+    // === SWITCH TO ===
     const otherFactions = factionData.filter(f => f.name !== target.name && f.availableAugs.length > 0);
-    if (otherFactions.length > 0) {
-      ns.print(`\n${dim}${'─'.repeat(60)}${reset}`);
-      ns.print(`${white}SWITCH HINTS${reset} ${dim}(other factions' next unlockable aug)${reset}`);
+    const hints = otherFactions.map(f => {
+      const nextUnlock = f.availableAugs.find(aug => aug.repReq > f.currentRep);
+      if (!nextUnlock) return null;
+      return { faction: f.name, aug: nextUnlock.name, repNeeded: nextUnlock.repReq - f.currentRep };
+    }).filter(h => h !== null).sort((a, b) => a.repNeeded - b.repNeeded);
 
-      // Find the next unlockable aug for each faction (smallest positive gap)
-      const hints = otherFactions.map(f => {
-        const nextUnlock = f.availableAugs.find(aug => aug.repReq > f.currentRep);
-        if (!nextUnlock) return null;
-        return {
-          faction: f.name,
-          aug: nextUnlock.name,
-          repNeeded: nextUnlock.repReq - f.currentRep,
-          repReq: nextUnlock.repReq,
-        };
-      }).filter(h => h !== null).sort((a, b) => a.repNeeded - b.repNeeded);
-
-      for (const hint of hints.slice(0, 5)) {
-        ns.print(`${dim}  ${cyan}${hint.faction.padEnd(20)}${reset} ${dim}→${reset} ${yellow}${hint.aug.substring(0, 25).padEnd(25)}${reset} ${dim}(need ${ns.formatNumber(hint.repNeeded)} rep)${reset}`);
+    if (hints.length > 0) {
+      ns.print('');
+      ns.print(`${cyan}SWITCH TO${reset}`);
+      for (const hint of hints.slice(0, 4)) {
+        ns.print(`  ${white}${hint.faction.padEnd(18)}${reset} ${dim}→${reset} ${yellow}${hint.aug.substring(0, 26).padEnd(26)}${reset} ${dim}(${ns.formatNumber(hint.repNeeded)} rep)${reset}`);
       }
-      if (hints.length > 5) {
-        ns.print(`${dim}  ... +${hints.length - 5} more factions${reset}`);
+      if (hints.length > 4) {
+        ns.print(`  ${dim}+${hints.length - 4} more factions${reset}`);
       }
     }
 
