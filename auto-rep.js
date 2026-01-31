@@ -104,7 +104,6 @@ export async function main(ns) {
 
     // === CURRENT FOCUS ===
     ns.print('');
-    ns.print(`${cyan}CURRENT FOCUS${reset}`);
 
     // Faction + work status on one line
     let workStatus = `${dim}not working${reset}`;
@@ -115,7 +114,7 @@ export async function main(ns) {
     } else if (currentWork) {
       workStatus = `${yellow}${currentWork.type.toLowerCase()}${reset}`;
     }
-    ns.print(`${white}${target.name}${reset}  ${dim}→${reset}  ${workStatus}  ${dim}(favor: ${target.favor.toFixed(0)}/${ns.getFavorToDonate().toFixed(0)})${reset}`);
+    ns.print(`${cyan}CURRENT FOCUS${reset}: ${white}${target.name}${reset}  ${dim}→${reset}  ${workStatus}  ${dim}(favor: ${target.favor.toFixed(0)}/${ns.getFavorToDonate().toFixed(0)})${reset}`);
 
     // === NEXT UNLOCK ===
     if (nextAug) {
@@ -125,7 +124,7 @@ export async function main(ns) {
       const canAfford = player.money - FLAGS.reserve >= nextAug.basePrice;
 
       ns.print('');
-      ns.print(`${cyan}NEXT UNLOCK${reset}  ${yellow}${nextAug.name}${reset}`);
+      ns.print(`${cyan}  NEXT UNLOCK${reset}:  ${yellow}${nextAug.name}${reset}`);
       ns.print(`${repBar} ${white}${(repProgress * 100).toFixed(1)}%${reset}`);
 
       // Rep progress line
@@ -179,7 +178,7 @@ export async function main(ns) {
       ns.print(`${cyan}PURCHASE ORDER${reset}  ${dim}${purchasePlan.length} unlocked, ${green}${affordableCount} affordable${reset}${dim}, $${ns.formatNumber(totalCost)} total${reset}`);
       ns.print('');
 
-      ns.print(`${dim}${'#'.padStart(2)}  ${'Augmentation'.padEnd(34)} ${'Cost'.padStart(11)}    ${'Total'.padStart(11)}${reset}`);
+      ns.print(`${dim}${'#'.padStart(2)}  ${'Augmentation'.padEnd(34)} ${'Cost'.padStart(11)}  ${'Adjusted'.padStart(11)}    ${'Total'.padStart(11)}${reset}`);
 
       runningTotal = 0;
       const maxShow = 12;
@@ -194,7 +193,8 @@ export async function main(ns) {
         ns.print(
           `${color}${(i + 1).toString().padStart(2)}${reset}  ` +
           `${nameColor}${item.name.substring(0, 34).padEnd(34)}${reset} ` +
-          `${color}$${ns.formatNumber(item.adjustedCost).padStart(10)}${reset}    ` +
+          `${dim}$${ns.formatNumber(item.basePrice).padStart(10)}${reset} → ` +
+          `${color}${ns.formatNumber(item.adjustedCost).padStart(10)}${reset}    ` +
           `${color}$${ns.formatNumber(runningTotal).padStart(10)}${reset}`
         );
       }
